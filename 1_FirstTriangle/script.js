@@ -1,110 +1,67 @@
-//Estrutura básica WebGL. FOnte: webglacademy.com
-var main=function() {
+function main(){
+    const canvas = document.getElementById("glCanvas");
+    
+    if(canvas)
+        var gl = canvas.getContext("webgl");
+    else 
+        console.log("Erro acessando elemento canvas")
 
-  var CANVAS=document.getElementById("canvas");
+    if (!gl) {
+        alert("Erro ao incializar WebGL");
+        return;
+      }
+      else{
+          console.log("WebGL Inicializada");
+      }
 
-  CANVAS.width=window.innerWidth;
-  CANVAS.height=window.innerHeight;
+      const vertexData=[
+         -1,1, 0,
+         1, -1, 0,
+         1,1, 0,
+         -1, 0.9, 0,
+         -1, -1, 0,
+         0.9, -1, 0
+      ];
 
-  var GL;
-  GL = CANVAS.getContext("experimental-webgl");
-
-  /*========================= SHADERS ========================= */
-  var shader_vertex_source="\n\
-  attribute vec2 position; //the position of the point\n\
-  attribute vec3 color;  //the color of the point\n\
-  \n\
-  varying vec3 vColor;\n\
-  void main(void) { //pre-built function\n\
-  gl_Position = vec4(position, 0., 1.); //0. is the z, and 1 is w\n\
-  vColor=color;\n\
-  }";
-
-  var shader_fragment_source="\n\
-  precision mediump float;\n\
-  \n\
-  \n\
-  \n\
-  varying vec3 vColor;\n\
-  void main(void) {\n\
-  gl_FragColor = vec4(vColor, 1.);\n\
-  }";
+      //Comunicação com A GPU
+      const myBuffer = gl.createBuffer();
+      gl.bindBuffer (gl.ARRAY_BUFFER, myBuffer);
+      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertexData), gl.STATIC_DRAW); 
 
 
-  var get_shader=function(source, type, typeString) {
-    var shader = GL.createShader(type);
-    GL.shaderSource(shader, source);
-    GL.compileShader(shader);
-    if (!GL.getShaderParameter(shader, GL.COMPILE_STATUS)) {
-      alert("ERROR IN "+typeString+ " SHADER : " + GL.getShaderInfoLog(shader));
-      return false;
-    }
-    return shader;
-  };
+      //Shaders
+      const vertexShader = gl.createShader(gl.VERTEX_SHADER);
+      gl.shaderSource(vertexShader, `
+        attribute vec3 position;
+        void main(){
+            gl_Position = vec4(position, 1);
+        }   
+      `);
+      gl.compileShader(vertexShader);
 
-  var shader_vertex=get_shader(shader_vertex_source, GL.VERTEX_SHADER, "VERTEX");
+      const fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
+      gl.shaderSource(fragmentShader, `
+        void main()
+        {
+            gl_FragColor = vec4 (0, 1, 0, 1);
+        }
 
-  var shader_fragment=get_shader(shader_fragment_source, GL.FRAGMENT_SHADER, "FRAGMENT");
+      `);
+      gl.compileShader(fragmentShader);
 
-  var SHADER_PROGRAM=GL.createProgram();
-  GL.attachShader(SHADER_PROGRAM, shader_vertex);
-  GL.attachShader(SHADER_PROGRAM, shader_fragment);
+      const program = gl.createProgram();
+      gl.attachShader(program, vertexShader);
+      gl.attachShader(program, fragmentShader);
+      gl.linkProgram(program); 
 
-  GL.linkProgram(SHADER_PROGRAM);
+      const positionLocation = gl.getAttribLocation(program, `position`);
+      gl.enableVertexAttribArray(positionLocation);
+      gl.vertexAttribPointer(positionLocation, 3, gl.FLOAT, false, 0, 0);
 
-  var _color = GL.getAttribLocation(SHADER_PROGRAM, "color");
-  var _position = GL.getAttribLocation(SHADER_PROGRAM, "position");
+      gl.useProgram(program);  
+      gl.drawArrays(gl.TRIANGLES, 0, 6); 
 
-  GL.enableVertexAttribArray(_color);
-  GL.enableVertexAttribArray(_position);
-
-  GL.useProgram(SHADER_PROGRAM);
+}
+window.onload = main;
 
 
-  /*========================= THE TRIANGLE ========================= */
-  //POINTS :
-  var triangle_vertex=[
-  -1,-1, //first corner: -> bottom left of the viewport
-  0,0,1, // vermelho
-  1,-1, //bottom right of the viewport
-  1,1,0, //green
-  1,1,  //top right of the viewport
-  1,0,0 //blue
-  ];
-
-  var TRIANGLE_VERTEX= GL.createBuffer ();
-  GL.bindBuffer(GL.ARRAY_BUFFER, TRIANGLE_VERTEX);
-  GL.bufferData(GL.ARRAY_BUFFER,
-  new Float32Array(triangle_vertex),
-  GL.STATIC_DRAW);
-
-  //FACES :
-  var triangle_faces = [0,1,2];
-  var TRIANGLE_FACES= GL.createBuffer ();
-  GL.bindBuffer(GL.ELEMENT_ARRAY_BUFFER, TRIANGLE_FACES);
-  GL.bufferData(GL.ELEMENT_ARRAY_BUFFER,
-  new Uint16Array(triangle_faces),
-  GL.STATIC_DRAW);
-
-  /*========================= DRAWING ========================= */
-  GL.clearColor(0.0, 0.0, 0.0, 0.0);
-
-  var animate=function() {
-
-  GL.viewport(0.0, 0.0, CANVAS.width, CANVAS.height);
-  GL.clear(GL.COLOR_BUFFER_BIT);
-
-    GL.bindBuffer(GL.ARRAY_BUFFER, TRIANGLE_VERTEX);
-
-    GL.vertexAttribPointer(_position, 2, GL.FLOAT, false,4*(2+3),0);
-    GL.vertexAttribPointer(_color, 3, GL.FLOAT, false,4*(2+3),2*4);
-
-    GL.bindBuffer(GL.ELEMENT_ARRAY_BUFFER, TRIANGLE_FACES);
-    GL.drawElements(GL.TRIANGLES, 3, GL.UNSIGNED_SHORT, 0);
-    GL.flush();
-
-  window.requestAnimationFrame(animate);
-  };
-
-  animate();
-};
